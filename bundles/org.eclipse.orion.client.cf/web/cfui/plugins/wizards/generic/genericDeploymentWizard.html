@@ -16,7 +16,7 @@
 		require(["cfui/plugins/wizards/generic/genericDeploymentWizard"]);
 	</script>
 </head>
-<body id="deployBody" class="dialogFrame">
+<body id="deployBody" class="dialogFrame lightPage">
 
 	<div class="dialogTitle" id="titleBar">
 		<span id="title" class="dialogTitleText layoutLeft">
@@ -30,5 +30,15 @@
 		<div id="wizard"></div>
 	</div>
 	
+		<script>
+			var themeVal = localStorage.getItem("pageTheme");
+			if (themeVal && typeof themeVal === "string" || themeVal instanceof String && themeVal.length > 0) {
+				themeVal.split(" ").forEach(function(clazz) {
+					if (!document.body.classList.contains(clazz)) {
+						document.body.classList.add(clazz);
+					}
+				});
+			}
+		</script>
 </body>
 </html>

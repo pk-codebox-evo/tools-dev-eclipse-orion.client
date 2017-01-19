@@ -71,7 +71,7 @@
 	font-size: 8pt;
 	font-weight: bold;
 	outline: none;
-	padding: 17px 0;
+	padding: 6px 0;
 	padding-left: 20px;
 	cursor: pointer;
 	list-style: none;
@@ -205,6 +205,10 @@ html[dir="rtl"] .setting-row { /* ACGC */
 	padding-right: 10px;
 	padding-left:10px;
 	text-transform: uppercase;
+}
+
+.git-setting-header {
+	min-width: 230px;
 }
 
 .setting-header-generated {
@@ -822,6 +826,7 @@ html[dir="rtl"] .editorSection { /* ACGC */
 
 #editorThemeDelete, #editorThemeRevert, #editorThemeSave {
     float: right;
+    margin-right: 10px;
 }
 
 html[dir="rtl"] #editorThemeDelete, #editorThemeRevert, #editorThemeSave { /* ACGC */
@@ -849,10 +854,6 @@ html[dir="rtl"] #editorThemeDelete, #editorThemeRevert, #editorThemeSave { /* AC
 .git-sprite-revert:before{
 	font-family: 'Orion Icon Font';
 	content: '\E021';
-}
-
-#editorThemeRevert {
-    margin-right: 10px;
 }
 
 html[dir="rtl"] #editorThemeRevert { /* ACGC */

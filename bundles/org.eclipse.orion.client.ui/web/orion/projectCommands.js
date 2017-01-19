@@ -174,8 +174,8 @@ define(['require', 'i18n!orion/navigate/nls/messages', 'orion/webui/littlelib', 
 	function runDeploy(enhansedLaunchConf, context){
 		var liveEditWrapper = lib.$("#liveEditSwitchWrapper"); //$NON-NLS-0$
 		if (liveEditWrapper) {
-			var liveEditCheck = lib.$(".orionSwitchCheck", liveEditWrapper);
-			var liveEdit = liveEditCheck && liveEditCheck.checked;
+			var liveEditCheck = lib.$(".orionSwitch", liveEditWrapper); //$NON-NLS-0$
+			var liveEdit = liveEditCheck && liveEditCheck.getAttribute("aria-pressed") === "true"; //$NON-NLS-0$ //$NON-NLS-1$
 		}
 		var startTime = Date.now();
 
@@ -512,7 +512,7 @@ define(['require', 'i18n!orion/navigate/nls/messages', 'orion/webui/littlelib', 
 				if(!data.parameters){
 					messageService.setProgressResult({
 						Message: errorMessage,
-						Severity: "Info" //$NON-NLS-0$
+						Severity: "Warning" //$NON-NLS-0$
 					});
 					
 					var options = objects.mixin({}, commonRetryOptions, {
@@ -716,7 +716,7 @@ define(['require', 'i18n!orion/navigate/nls/messages', 'orion/webui/littlelib', 
 				}
 
 				var func = arguments.callee;
-				var params = handleParamsInCommand(func, data, messages["deploy"] + item.Name);
+				var params = handleParamsInCommand(func, data, i18nUtil.formatMessage(messages["deployItem"], item.Name));
 				if(!params){
 					return;
 				}
@@ -779,7 +779,7 @@ define(['require', 'i18n!orion/navigate/nls/messages', 'orion/webui/littlelib', 
 				}
 
 				var func = arguments.callee;
-				var params = handleParamsInCommand(func, data, messages["deploy"] + item.Name);
+				var params = handleParamsInCommand(func, data, i18nUtil.formatMessage(messages["deployItem"], item.Name));
 				if(!params){
 					return;
 				}

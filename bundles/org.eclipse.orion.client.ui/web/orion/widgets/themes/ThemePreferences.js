@@ -7,6 +7,7 @@
  * License v1.0 (http://www.eclipse.org/org/documents/edl-v10.html).
  *
  * Contributors:  IBM Corporation - initial API and implementation
+ *                Casey Flynn - Google Inc
  ******************************************************************************/
 /*eslint-env browser, amd*/
 
@@ -57,7 +58,6 @@ define([], function() {
 			}
 			if (!selected || selected[themeInfo.selectedKey] === undefined) {
 				selected = selected || {};
-				selected[themeInfo.selectedKey] = themeInfo.defaultTheme;
 				prefs['selected'] = selected; //$NON-NLS-0$
 			}
 			// prefs have now been updated

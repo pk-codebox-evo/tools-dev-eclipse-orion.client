@@ -117,7 +117,7 @@ define([
 
 	function startProgressService(serviceRegistry) {
 		var progressPane = lib.node("progressPane"); //$NON-NLS-0$
-		progressPane.setAttribute("aria-label", messages['OpPressSpaceMsg']); //$NON-NLS-1$ //$NON-NLS-0$
+		progressPane.setAttribute("aria-label", messages['Operations']); //$NON-NLS-1$ //$NON-NLS-0$
 		var progressService = serviceRegistry.getService("orion.page.progress"); //$NON-NLS-0$
 		if (progressService) {
 			progressService.init.bind(progressService)("progressPane"); //$NON-NLS-0$
@@ -616,7 +616,15 @@ define([
 			}
 		});
 
-
+		var themeVal = localStorage.getItem("pageTheme");
+		if (themeVal && typeof themeVal === "string" || themeVal instanceof String && themeVal.length > 0) {
+			themeVal.split(" ").forEach(function(clazz) {
+				if (!document.body.classList.contains(clazz)) {
+					document.body.classList.add(clazz);
+				}
+			});
+		}
+		
 		// forward the preference service on to the command registry
 		commandRegistry.setServiceRegistry(serviceRegistry);
 		
@@ -705,7 +713,7 @@ define([
 					closeByDefault: closeSplitter
 				});
 				var toggleSidePanelCommand = new mCommands.Command({
-					name: messages["Toggle side panel"],
+					name: messages["Toggle Side Panel"],
 					tooltip: messages["Open or close the side panel"],
 					id: "orion.toggleSidePane", //$NON-NLS-0$
 					callback: function () {
@@ -793,7 +801,7 @@ define([
 		} else {
 			// Toggle trim command
 			var toggleBanner = new mCommands.Command({
-				name: messages["Toggle banner and footer"],
+				name: messages["Toggle Banner and Footer"],
 				tooltip: messages["HideShowBannerFooter"],
 				id: "orion.toggleTrim", //$NON-NLS-0$
 				callback: toggleBannerFunc
@@ -831,21 +839,7 @@ define([
 			keyAssist = new mKeyAssist.KeyAssistPanel({
 				commandRegistry: commandRegistry
 			});
-			var keyAssistCommand = new mCommands.Command({
-				name: messages["Show Keys"],
-				tooltip: messages["ShowAllKeyBindings"],
-				id: "orion.keyAssist", //$NON-NLS-0$
-				callback: function () {
-					if (keyAssist.isVisible()) {
-						keyAssist.hide();
-					} else {
-						keyAssist.show();
-					}
-					return true;
-				}
-			});
-			commandRegistry.addCommand(keyAssistCommand);
-			commandRegistry.registerCommandContribution("globalActions", "orion.keyAssist", 100, null, true, new KeyBinding.KeyBinding(191, false, true)); //$NON-NLS-1$ //$NON-NLS-0$
+			var keyAssistCommand = mKeyAssist.createCommand(keyAssist, "globalActions", commandRegistry);
 
 			renderGlobalCommands(commandRegistry);
 

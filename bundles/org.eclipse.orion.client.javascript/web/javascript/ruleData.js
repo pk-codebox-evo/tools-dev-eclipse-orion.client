@@ -21,9 +21,9 @@ define([
 			"check-tern-plugin" : 1,
 			"curly" : 0,
 			"eqeqeq": 1,
-			"missing-doc" : 0, 
+			"missing-doc" : 0,
 			"missing-nls" : 0,
-			'missing-requirejs': 1,
+			"missing-requirejs": 1,
 			"new-parens" : 2,
 			"no-caller": 2,
 			"no-comma-dangle" : 0,
@@ -44,17 +44,17 @@ define([
 			"no-extend-native": [2, {"exceptions" : ""}],
 			"no-extra-bind" : 1,
 			"no-extra-boolean-cast" : 2,
-			"no-extra-parens" : 1,
+			"no-extra-parens" : [1, "all", {"conditionalAssign": false, "returnAssign": false, "nestedBinaryExpressions": false}],
 			"no-extra-semi": 1,
 			"no-fallthrough" : 2,
 			"no-implicit-coercion" : [1, { "boolean": true, "number" : true, "string" : true }],
 			"no-implied-eval" : 0,
-			"no-invalid-regexp": 2,
+			"no-invalid-regexp": [2, {"allowConstructorFlags" : ""}],
 			"no-invalid-this" : 1,
-			"no-irregular-whitespace" : 0,
-			"no-iterator": 2, 
+			"no-irregular-whitespace" : [0, {"skipComments": false, "skipRegExps": false, "skipTemplates": false}],
+			"no-iterator": 2,
 			"no-jslint" : 1,
-			"no-lone-blocks" : 1,
+			"no-lone-blocks" : 0,
 			"no-mixed-spaces-and-tabs" : 0,
 			"no-native-reassign" : [2, {"exceptions" : ""}],
 			"no-negated-in-lhs" : 2,
@@ -64,7 +64,7 @@ define([
 			"no-new-wrappers" : 1,
 			"no-obj-calls" : 2,
 			"no-param-reassign" : [1, {props: false}],
-			"no-proto" : 2, 
+			"no-proto" : 2,
 			"no-redeclare" : 1,
 			"no-regex-spaces" : 2,
 			"no-reserved-keys" : 0,
@@ -72,25 +72,25 @@ define([
 			"no-self-compare" : 2,
 			"no-shadow" : 1,
 			"no-shadow-global" : 1,
-			"no-sparse-arrays" : 1, 
+			"no-sparse-arrays" : 1,
 			"no-throw-literal" : 1,
-			"no-trailing-spaces" : [1, { "skipBlankLines": true }],
+			"no-trailing-spaces" : [0, { "skipBlankLines": true }],
 			"no-undef" : 2,
 			"no-undef-expression": 1,
 			"no-undef-init" : 1,
 			"no-unreachable" : 1,
-			"no-unused-expressions" : [2, {allowShortCircuit: false, allowTernary: false}],
+			"no-unused-expressions" : [0, {allowShortCircuit: false, allowTernary: false}],
 			"no-unused-params" : 1,
 			"no-unused-vars" : 1,
 			"no-use-before-define" : 1,
-			"no-void" : 2,
+			"no-void" : 0,
 			"no-with" : 1,
-			"quotes" : [1, "double", {avoidEscape: false, allowTemplateLiterals: false}],
+			"quotes" : [0, "double", {avoidEscape: false, allowTemplateLiterals: false}],
 			"radix" : 1,
 			"semi" : [1, "always", {omitLastInOneLineBlock: false}],
 			"type-checked-consistent-return" : 0,
-			"unnecessary-nls" : 0,
 			"unknown-require": 1,
+			"unnecessary-nls" : 0,
 			"use-isnan" : 2,
 			"valid-typeof" : 2,
 			"yoda" : [0, "never", {exceptRange: false, onlyEquality: false}]
@@ -141,7 +141,7 @@ define([
 			"no-console" : {
 				description: Messages['no-console-description'],
 				url: 'http://eslint.org/docs/rules/no-console'
-			}, 
+			},
 			"no-constant-condition" : {
 				description: Messages['no-constant-condition-description'],
 				url: 'http://eslint.org/docs/rules/no-constant-condition'
@@ -259,7 +259,7 @@ define([
 			},
 			"no-new-array": {
 				description: Messages['no-new-array-description'],
-				url: 'http://eslint.org/docs/rules/no-array-constructor.html'
+				url: 'http://eslint.org/docs/rules/no-array-constructor'
 			},
 			"no-new-func" : {
 				description: Messages['no-new-func-description'],
@@ -283,8 +283,8 @@ define([
 			},
 			"no-proto" : {
 				description: Messages['no-proto-description'],
-				url: 'http://eslint.org/docs/rules/no-proto.html'
-			}, 
+				url: 'http://eslint.org/docs/rules/no-proto'
+			},
 			"no-redeclare" : {
 				description: Messages['no-redeclare-description'],
 				url: 'http://eslint.org/docs/rules/no-redeclare'
@@ -315,7 +315,7 @@ define([
 			"no-sparse-arrays" : {
 				description: Messages['no-sparse-arrays-description'],
 				url: 'http://eslint.org/docs/rules/no-sparse-arrays'
-			}, 
+			},
 			"no-throw-literal" : {
 				description: Messages['no-throw-literal-description'],
 				url: 'http://eslint.org/docs/rules/no-throw-literal'
@@ -333,7 +333,7 @@ define([
 			},
 			"no-undef-init" : {
 				description: Messages['no-undef-init-description'],
-				url: 'http://eslint.org/docs/rules/no-undef-init.html'
+				url: 'http://eslint.org/docs/rules/no-undef-init'
 			},
 			"no-unreachable" : {
 				description: Messages['no-unreachable-description'],
@@ -397,5 +397,6 @@ define([
 			}
 		}
 	};
+	Object.freeze(rules.defaults);
 	return rules;
 });

@@ -80,8 +80,12 @@ function(Tern, defaultOptions, Deferred, Objects, Serialize, Messages, i18nUtil)
 			projectLoc = jsonOptions.projectLoc;
 			plugins = jsonOptions.plugins;
 			pluginsDir = jsonOptions.pluginsDir;
-			mergeArray(defNames, jsonOptions.libs);
-			mergeArray(defNames, jsonOptions.defs);
+			if(jsonOptions.libs) {
+				mergeArray(defNames, jsonOptions.libs);
+			}
+			if(jsonOptions.defs) {
+				mergeArray(defNames, jsonOptions.defs);
+			}
 			if(Array.isArray(jsonOptions.loadEagerly) && jsonOptions.loadEagerly.length > 0) {
 				options.loadEagerly = jsonOptions.loadEagerly;
 			}
@@ -97,6 +101,8 @@ function(Tern, defaultOptions, Deferred, Objects, Serialize, Messages, i18nUtil)
 				} else if(options.ecmaVersion === 7) {
 					mergeArray(defNames, ["ecma5", "ecma6", "ecma7"]);
 				}
+			} else {
+				mergeArray(defNames, ["ecma5", "ecma6", "ecma7"]);
 			}
 			if (typeof jsonOptions.sourceType === 'string') {
 				options.sourceType = jsonOptions.sourceType;
@@ -227,6 +233,14 @@ function(Tern, defaultOptions, Deferred, Objects, Serialize, Messages, i18nUtil)
 		               if(decl && typeof decl.start === 'number' && typeof decl.end === "number") {
 							callback({request: 'definition', declaration:decl}); //$NON-NLS-1$
 						} else if (decl && decl.origin){
+							//tern guessed at it when there is no line infos
+							var idx = decl.origin.lastIndexOf(".");
+							if(idx > -1 && decl.origin.slice(idx) === ".js") {
+								decl.guess = true;
+							} else {
+								delete decl.guess;  //sometimes Tern will set the guess flag, we only want the index flag
+								decl.index = true;
+							}
 							callback({request: 'definition', declaration: decl}); //$NON-NLS-1$
 						} else {
 							callback({request: 'definition', declaration: null}); //$NON-NLS-1$
@@ -453,7 +467,8 @@ function(Tern, defaultOptions, Deferred, Objects, Serialize, Messages, i18nUtil)
 			ternserver.request({
 					query: {
 						type: "outline", //$NON-NLS-1$
-						file: args.meta.location
+						file: args.meta.location,
+						ast: args.ast
 					},
 					files: args.files
 				},
@@ -773,7 +788,7 @@ function(Tern, defaultOptions, Deferred, Objects, Serialize, Messages, i18nUtil)
 		if(projectLoc) {
 			loc = projectLoc + loc;
 		}
-		if(!/$.json/i.test(def)) {
+		if(!/\.json$/i.test(def)) {
 			loc = loc + '.json'; //$NON-NLS-1$
 		}
 		var deferred = new Deferred();

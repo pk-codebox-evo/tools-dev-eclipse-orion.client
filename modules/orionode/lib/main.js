@@ -17,10 +17,6 @@ function redrawButtons() {
 	var bar = document.querySelector("#bar");
 	var buttons = document.createElement("span");
 	buttons.classList.add("tabButtons");
-	var back = document.createElement("button");
-	back.textContent = "<";
-	back.classList.add("tabButton");
-
 	function historyBack() {
 		var active = getActiveTab();
 		if (!active) return;
@@ -32,29 +28,44 @@ function redrawButtons() {
 		if (!active) return;
 		active.contentWindow.history.forward();
 	}
+	function refreshPage() {
+		var active = getActiveTab();
+		if (!active) return;
+		active.contentWindow.location.reload();
+	}
+	var back = document.createElement("button"),
+		backTitle = process.platform === "darwin"? "Back (⌘+Left)" :"Back (Alt+Left)";
+	back.title = backTitle;
+	back.setAttribute("aria-label", backTitle);
+	back.textContent = "<";
+	back.classList.add("tabButton");
 	back.addEventListener("click", historyBack);
 	buttons.appendChild(back);
-	var forward = document.createElement("button");
+	
+	var forward = document.createElement("button"),
+		forwardTitle = process.platform === "darwin"? "Forward (⌘+Right)" :"Forward (Alt+Right)";
+	forward.title = forwardTitle;
+	forward.setAttribute("aria-label", forwardTitle);
 	forward.textContent = ">";
 	forward.classList.add("tabButton");
 	forward.addEventListener("click", historyForward);
 	buttons.appendChild(forward);
-	var refresh = document.createElement("button");
+	
+	var refresh = document.createElement("button"),
+		refreshTitle = process.platform === "darwin"? "Refresh (⌘+R)" :"Refresh (Ctrl+R)";
+	refresh.title = refreshTitle;
+	refresh.setAttribute("aria-label", refreshTitle);
 	refresh.textContent = "\u27F2";
 	refresh.classList.add("tabButton");
-	refresh.addEventListener("click", function() {
-		var active = getActiveTab();
-		if (!active) return;
-		active.contentWindow.location.reload();
-	});
+	refresh.addEventListener("click", refreshPage);
 	buttons.appendChild(refresh);
+	
 	bar.appendChild(buttons);
-
-	var _globalShortcut = electron.remote.globalShortcut;
-	_globalShortcut.unregister('Alt+Right');
-	_globalShortcut.unregister('Alt+Left');
-	_globalShortcut.register('Alt+Right', historyForward);
-	_globalShortcut.register('Alt+Left', historyBack);
+	return {
+		refreshPage:refreshPage,
+		historyForward:historyForward,
+		historyBack:historyBack
+	};
 }
 
 function addNewTab(id, iframe) {
@@ -72,6 +83,9 @@ function addNewTab(id, iframe) {
 	var text = document.createElement("span");
 	text.classList.add("tabLabel");
 	text.textContent = title;
+	var icon = document.createElement("img");
+	icon.classList.add("tabIcon");
+	tab.appendChild(icon);
 	tab.appendChild(text);
 	tab.title = title;
 
@@ -99,11 +113,21 @@ function addNewTab(id, iframe) {
 	}
 
 	tab.addEventListener("click", function(evt) {
-		setActive();
-		evt.preventDefault();
-		evt.stopPropagation();
-		var menu = document.querySelector("#context-menu");
-		menu.classList.remove('context-menu-items-open');
+		if (evt.button === 1 && tabParent.childNodes.length > 1) {
+			// middle button clicked, close the tab if there are two or more
+			// tabs around
+			iframe.parentNode.removeChild(iframe);
+			tab.parentNode.removeChild(tab);
+			update();
+			evt.preventDefault();
+			evt.stopPropagation();
+		} else {
+			setActive();
+			evt.preventDefault();
+			evt.stopPropagation();
+			var menu = document.querySelector("#context-menu");
+			menu.classList.remove('context-menu-items-open');
+		}
 	});
 
 	tab.addEventListener('dragstart', function(evt) {
@@ -161,6 +185,16 @@ function setTabLabel(id, str) {
 	var text = tab.querySelector(".tabLabel");
 	tab.title = text.textContent = str;
 }
+function setTabIcon(id,head) {
+	var linkIconElement = Array.prototype.find.call(head.childNodes, function(node){
+		return node.nodeName === 'LINK' && node.rel === 'icon';
+	});
+	if(linkIconElement && linkIconElement.href){
+		var tab = document.getElementById("tab" + id);
+		var icon = tab.querySelector(".tabIcon");
+		icon.src = linkIconElement.href;
+	}
+}
 
 function update() {
 	var bar = document.querySelector("#bar");
@@ -196,8 +230,10 @@ function getActiveTab() {
 }
 
 function load() {
-	redrawButtons();
+	var pageControlCallbacks = redrawButtons();
 	createTab(window.location.hash.substr(1));
+	var newTabCallback = createNewTabButton(window.location.hash.substr(1));
+	registerElectronMenu(pageControlCallbacks, newTabCallback);
 	window.addEventListener("resize", function() {
 		if (this.timeout) window.clearTimeout(this.timeout);
 		this.timeout = window.setTimeout(function() {
@@ -205,6 +241,56 @@ function load() {
 		}, 50);
 	});
 	registerContextMenu();
+}
+
+function registerElectronMenu(pageControlCallbacks, newTabCallback){
+	function switchForwardTabs(){
+		var activeTab = document.querySelector(".tabItem.active");
+		var nextTabButton = activeTab.nextSibling;
+		nextTabButton ? nextTabButton.click() : activeTab.parentNode.firstChild.click();
+	}
+	function switchBackwardTabs(){
+		var activeTab = document.querySelector(".tabItem.active");
+		var previousTabButton = activeTab.previousSibling;
+		previousTabButton ? previousTabButton.click() : activeTab.parentNode.lastChild.click();
+	}
+	var Menu = electron.remote.Menu;
+	var menu = Menu.getApplicationMenu();
+	menu.append(new electron.remote.MenuItem( // The main purpose of creating menu if for key binding
+		{
+			label: "Navigation",  
+			submenu: [
+				{label: "Back", accelerator:process.platform === "darwin"? "CmdOrCtrl+Left" :"Alt+Left", click: pageControlCallbacks.historyBack},
+				{label: "Forward", accelerator:process.platform === "darwin"? "CmdOrCtrl+Right" :"Alt+Right", click: pageControlCallbacks.historyForward},
+				{label: "Refresh", accelerator:process.platform === "darwin"? "CmdOrCtrl+R" :"Ctrl+R", click: pageControlCallbacks.refreshPage},
+				{label: "RefreshOnF5", accelerator:process.platform === "darwin"? "" :"F5", visible:false, click: pageControlCallbacks.refreshPage},
+				{label: "New Tab", accelerator:process.platform === "darwin"? "CmdOrCtrl+T" :"Ctrl+T", click: newTabCallback.newTab},
+				{label: "Move to Next Tab", accelerator:process.platform === "darwin"? "Ctrl+Tab" :"Ctrl+Tab", click: switchForwardTabs},
+				{label: "Move to Previous Tab", accelerator:process.platform === "darwin"? "Ctrl+Shift+Tab" :"Ctrl+Shift+Tab", click: switchBackwardTabs}
+			]
+		}
+	));
+	Menu.setApplicationMenu(menu);
+}
+
+function createNewTabButton(url){
+	var bar = document.querySelector("#bar");
+	var newTabButton = document.createElement("a"),
+		newTabButtonTitle = process.platform === "darwin"? "New Tab (⌘+T)" :"New Tab (Ctrl+T)",
+		newTabButtonText = "+";
+	
+	newTabButton.title = newTabButtonTitle;
+	newTabButton.setAttribute("aria-label", newTabButtonTitle);
+	newTabButton.innerHTML = newTabButtonText;
+	newTabButton.classList.add("openNewTab");
+	function newTab() {
+		createTab(url);
+	}
+	newTabButton.addEventListener("click", newTab);
+	bar.appendChild(newTabButton);
+	return {
+		newTab:newTab
+	};
 }
 
 function createTab(url) {
@@ -224,6 +310,7 @@ function createTab(url) {
 			var observer = new window.WebKitMutationObserver(function(mutations) {
 				if (mutations) {
 					setTabLabel(id, iframe.contentDocument.title);
+					setTabIcon(id,iframe.contentDocument.head);
 				}
 			});
 			observer.observe(target, {
@@ -233,6 +320,7 @@ function createTab(url) {
 			});
 		}
 		setTabLabel(id, iframe.contentDocument.title);
+		setTabIcon(id, iframe.contentDocument.head);
 		iframe.contentWindow.addEventListener("click", function() {
 			var menu = document.querySelector("#context-menu");
 			var activeClassName = "context-menu-items-open";
@@ -263,7 +351,6 @@ function registerContextMenu() {
 			if(allTabButtons.length > 1){
 				Array.prototype.forEach.call(allTabButtons, function(eachOne) {
 					if(eachOne.id !== contextSrcEl.id){
-						console.log(eachOne);
 						contextSrcEl.parentNode.removeChild(eachOne);
 					}
 				});

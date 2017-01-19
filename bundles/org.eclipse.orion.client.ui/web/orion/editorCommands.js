@@ -262,7 +262,7 @@ define([
 			commandRegistry.registerCommandContribution(this.editToolbarId || this.toolbarId, "orion.edit.undo", 400, this.editToolbarId ? "orion.menuBarEditGroup/orion.edit.undoGroup" : null, !this.editToolbarId, new mKeyBinding.KeyBinding('z', true), null, this); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-3$
 			commandRegistry.registerCommandContribution(this.editToolbarId || this.toolbarId, "orion.edit.redo", 401, this.editToolbarId ? "orion.menuBarEditGroup/orion.edit.undoGroup" : null, !this.editToolbarId, util.isMac ? new mKeyBinding.KeyBinding('z', true, true) : new mKeyBinding.KeyBinding('y', true), null, this); //$NON-NLS-3$ //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-4$
 			commandRegistry.registerCommandContribution(this.saveToolbarId || this.toolbarId, "orion.edit.openFolder", 1, this.saveToolbarId ? "orion.menuBarFileGroup/orion.edit.saveGroup" : null, false, new mKeyBinding.KeyBinding('o', true)); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-0$
-			commandRegistry.registerCommandContribution(this.saveToolbarId || this.toolbarId, "orion.edit.openRecent", 3, this.saveToolbarId ? "orion.menuBarFileGroup/orion.edit.saveGroup" : null, false, new mKeyBinding.KeyBinding('r', true)); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-0$
+			commandRegistry.registerCommandContribution(this.saveToolbarId || this.toolbarId, "orion.edit.openRecent", 3, this.saveToolbarId ? "orion.menuBarFileGroup/orion.edit.saveGroup" : null, false, null); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-0$
 			commandRegistry.registerCommandContribution(this.saveToolbarId || this.toolbarId, "orion.openResource", 1, this.saveToolbarId ? "orion.menuBarFileGroup/orion.edit.saveGroup" : null, false, new mKeyBinding.KeyBinding('f', true, true)); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-0$
 			commandRegistry.registerCommandContribution(this.saveToolbarId || this.toolbarId, "orion.edit.save", 2, this.saveToolbarId ? "orion.menuBarFileGroup/orion.edit.saveGroup" : null, false, new mKeyBinding.KeyBinding('s', true), null, this); //$NON-NLS-3$ //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-3$
 			commandRegistry.registerCommandContribution(this.editToolbarId || this.pageNavId, "orion.edit.gotoLine", 3, this.editToolbarId ? "orion.menuBarEditGroup/orion.findGroup" : null, !this.editToolbarId, new mKeyBinding.KeyBinding('l', !util.isMac, false, false, util.isMac), new mCommandRegistry.URLBinding("gotoLine", "line"), this); //$NON-NLS-4$ //$NON-NLS-3$ //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-5$
@@ -461,6 +461,7 @@ define([
 			var that = this;
 			var settingsCommand = new mCommands.Command({
 				imageClass: "core-sprite-wrench", //$NON-NLS-0$
+				name: messages.EditorSettings,
 				tooltip: messages.LocalEditorSettings,
 				id: "orion.edit.settings", //$NON-NLS-0$
 				visibleWhen: /** @callback */ function(items, data) {
@@ -1059,6 +1060,12 @@ define([
 				options.callback = function(data) {
 					var editor = this.editor || that.editor;
 					var inputManager = this.inputManager || that.inputManager;
+					
+					// When in the split editor quickfixes should be applied to the editor the annotation is in, not the editor with focus
+					if (info.scopeId === "orion.edit.quickfix" && data.userData.annotation.creatorID){
+						editor = data.userData.annotation.creatorID;
+					}
+					
 					//TODO should all text editors have selection?
 					var selection = editor.getSelection ? editor.getSelection() : {start: 0, end: 0};
 					var model = editor.getModel();
@@ -1099,21 +1106,21 @@ define([
 						// Provide the quick fix command with the selected annotation
 						if (info.scopeId === "orion.edit.quickfix") {
 							context.annotation = {
-								start: data.userData.start,
-								end: data.userData.end,
-								title: data.userData.title,
-								id: data.userData.id,
-								data: data.userData.data
+								start: data.userData.annotation.start,
+								end: data.userData.annotation.end,
+								title: data.userData.annotation.title,
+								id: data.userData.annotation.id,
+								data: data.userData.annotation.data
 							};
 							// Also include other annotations with the same id
 							// TODO: We are using the internals of the annotation model here
 							// TODO We also check the model existence in commands.js
-							if (data.userData.doFixAll && data.userData._annotationModel){
+							if (data.userData.annotation.doFixAll && data.userData.annotation._annotationModel){
 								context.doFixAll = true;
 								context.annotations = [];
-								var allAnnotations = data.userData._annotationModel._annotations;
+								var allAnnotations = data.userData.annotation._annotationModel._annotations;
 								for (var i=0; i<allAnnotations.length; i++) {
-									if (allAnnotations[i].id === data.userData.id){
+									if (allAnnotations[i].id === data.userData.annotation.id){
 										context.annotations.push(
 											{
 												start: allAnnotations[i].start,
@@ -1188,6 +1195,10 @@ define([
 					info.forceSingleItem = true;  // for compatibility with mExtensionCommands._createCommandOptions
 
 					var deferred = mExtensionCommands._createCommandOptions(info, serviceReference, that.serviceRegistry, contentTypesCache, false, /* @callback */ function(items) {
+						if (info.scopeId === "orion.edit.quickfix" && items.annotation !== undefined && items.readonly !== undefined){
+							// Quick fixes validate based on annotation and readonly, if in split editor mode, validate the annotation's editor, not the active editor (Bug 496208)
+							return items;
+						}
 						// items is the editor and we care about the file metadata for validation
 						return that.inputManager.getFileMetadata();
 					}).then(function(commandOptions){

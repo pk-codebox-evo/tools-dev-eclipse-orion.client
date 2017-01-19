@@ -7,6 +7,7 @@
  * License v1.0 (http://www.eclipse.org/org/documents/edl-v10.html). 
  * 
  * Contributors: Anton McConville - IBM Corporation - initial API and implementation
+ *               Casey Flynn - Google Inc - Addition of Platform Styles.
  ******************************************************************************/
 /*eslint-env browser, amd*/
 
@@ -15,32 +16,45 @@
 
 define([
 	'i18n!orion/settings/nls/messages',
+	'orion/commands',
 	'orion/globalCommands',
 	'orion/PageUtil',
 	'orion/webui/littlelib',
+	'orion/i18nUtil',
 	'orion/objects',
+	'orion/operationsClient',
 	'orion/URITemplate',
 	'orion/widgets/themes/ThemeBuilder',
 	'orion/settings/ui/PluginSettings',
+	'orion/status',
 	'orion/widgets/themes/ThemePreferences',
 	'orion/widgets/themes/editor/ThemeData',
+	'orion/widgets/themes/container/ThemeData',
 	'orion/widgets/themes/ThemeImporter',
 	'orion/widgets/settings/SplitSelectionLayout',
 	'orion/widgets/plugin/PluginList',
 	'orion/widgets/settings/GitSettings',
 	'orion/widgets/settings/EditorSettings',
+	'orion/widgets/themes/EditorWidget',
+	'orion/widgets/themes/ContainerWidget',
 	'orion/widgets/settings/ThemeSettings',
+	'orion/widgets/themes/container/ContainerSetup',
+	'orion/widgets/themes/editor/editorSetup',
+	'orion/widgets/themes/container/ContainerScopeList',
+	'orion/widgets/themes/editor/EditorScopeList',
 	'orion/widgets/settings/UserSettings',
 	'orion/widgets/settings/GlobalizationSettings',
 	'orion/widgets/settings/GeneralSettings',
 	'orion/editorPreferences',
 	'orion/generalPreferences',
 	'orion/metrics',
-	'orion/util'
-], function(messages, mGlobalCommands, PageUtil, lib, objects, URITemplate, 
-		ThemeBuilder, SettingsList, mThemePreferences, editorThemeData, editorThemeImporter, SplitSelectionLayout, PluginList, 
-		GitSettings, EditorSettings, ThemeSettings, UserSettings, GlobalizationSettings, GeneralSettings, mEditorPreferences, mGeneralPreferences, mMetrics, util) {
+	'orion/util',
+], function(messages, mCommands, mGlobalCommands, PageUtil, lib, i18nUtil, objects, mOperationsClient, URITemplate, 
+		ThemeBuilder, SettingsList, mStatus, mThemePreferences, editorThemeData, containerThemeData, editorThemeImporter, SplitSelectionLayout, PluginList, 
+		GitSettings, EditorSettings, EditorWidget, ContainerWidget, ThemeSettings, ContainerSetup, editorSetup, ContainerScopeList, EditorScopeList, UserSettings, GlobalizationSettings, GeneralSettings, 
+		mEditorPreferences, mGeneralPreferences, mMetrics, util) {
 
+	
 	/**
 	 * @param {Object} options
 	 * @param {DomNode} node
@@ -48,6 +62,8 @@ define([
 	var superPrototype = SplitSelectionLayout.prototype;
 	function SettingsContainer(options, node) {
 		SplitSelectionLayout.apply(this, arguments);
+		this.operationsClient = new mOperationsClient.OperationsClient(this.registry);
+		this.statusService = new mStatus.StatusReportingService(this.registry, this.operationsClient, "statusPane", "notifications", "notificationArea"); //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-3$
 
 		var getPluginsRefs = this.registry.getServiceReferences("orion.core.getplugins"); //$NON-NLS-0$
 		this.pluginsUri = getPluginsRefs[0] && getPluginsRefs[0].getProperty("uri"); //$NON-NLS-0$
@@ -61,6 +77,20 @@ define([
 		this.settingsCore.pluginRegistry.addEventListener("started", pluginsUpdated);
 		this.settingsCore.pluginRegistry.addEventListener("stopped", pluginsUpdated);
 		this.settingsCore.pluginRegistry.addEventListener("updated", pluginsUpdated);
+		
+		var xhr = new XMLHttpRequest();
+		this.versionString = null;
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4 && xhr.status === 200){
+				var resp = JSON.parse(xhr.responseText);
+				if (typeof resp.build === "string"){
+					this.versionString = i18nUtil.formatMessage(messages["version"], resp.build);
+					this.statusService.setMessage(this.versionString);
+				}
+			}
+		}.bind(this);
+		xhr.open("GET", "../version",  true); //$NON-NLS-1$ //$NON-NLS-2$
+		xhr.send(null);
 	}
 	SettingsContainer.prototype = Object.create(superPrototype);
 	objects.mixin(SettingsContainer.prototype, {
@@ -95,6 +125,15 @@ define([
 						id: "themeSettings", //$NON-NLS-0$
 						textContent: messages.Theme,
 						show: _self.showThemeSettings
+					});
+				}
+				
+				if (categories.showContainerThemeSettings === undefined || categories.showContainerThemeSettings) {
+					_self.settingsCategories.push({
+						id: "conatinerThemeSettings", //$NON-NLS-0$
+						//TODO(caseyflynn): Add to messages.ContainerTheme
+						textContent: "Platform Styles",
+						show: _self.showContainerThemeSettings
 					});
 				}
 				
@@ -197,7 +236,7 @@ define([
 
 			this.updateToolbar(id);
 
-			var editorSettingsNode = document.createElement('div'); //$NON-NLS-0$
+			var editorSettingsNode = document.createElement('div');
 			this.table.appendChild(editorSettingsNode);
 
 			var editorTheme = new editorThemeData.ThemeData();
@@ -230,7 +269,7 @@ define([
 
 			this.updateToolbar(id);
 			
-			var userNode = document.createElement('div'); //$NON-NLS-0$
+			var userNode = document.createElement('div');
 			this.table.appendChild(userNode);
 
 			this.userWidget = new UserSettings({
@@ -258,7 +297,7 @@ define([
 
 			this.updateToolbar(id);
 			
-			var userNode = document.createElement('div'); //$NON-NLS-0$
+			var userNode = document.createElement('div');
 			this.table.appendChild(userNode);
 
 			this.gitWidget = new GitSettings({
@@ -281,29 +320,53 @@ define([
 
 			this.updateToolbar(id);
 
-			var themeSettingsNode = document.createElement('div'); //$NON-NLS-0$
+			var themeSettingsNode = document.createElement('div');
 			this.table.appendChild(themeSettingsNode);
 
 			var editorTheme = new editorThemeData.ThemeData();
 			var themeImporter = new editorThemeImporter.ThemeImporter();
 			var themePreferences = new mThemePreferences.ThemePreferences(this.preferences, editorTheme);
-			var editorThemeWidget = new ThemeBuilder({ commandService: this.commandService, preferences: themePreferences, themeData: editorTheme, toolbarId: 'editorThemeSettingsToolActionsArea', serviceRegistry: this.registry}); //$NON-NLS-0$
+			var scopeList = EditorScopeList;
+			var previewWidget = new EditorWidget({scopeList: scopeList});
+			var setup = editorSetup;
 
-			var command = {
+			var themeWidget = new ThemeBuilder({
+				commandService: this.commandService, 
+				preferences: themePreferences, 
+				themeData: editorTheme, 
+				toolbarId: 'editorThemeSettingsToolActionsArea', 
+				scopeList: scopeList,
+				previewWidget: previewWidget,
+				setup: setup,
+				serviceRegistry: this.registry});
+
+			var exportCommand = new mCommands.Command({
+				name: messages.Export,
+				tooltip: messages['Export a theme'],
+				id: "orion.exportTheme",
+				callback: themeWidget.exportTheme
+			});
+			this.commandService.addCommand(exportCommand);
+			this.commandService.registerCommandContribution('themeCommands', "orion.exportTheme", 5); //$NON-NLS-1$ //$NON-NLS-0$			
+			
+			var command = new mCommands.Command({
 				name:messages.Import,
 				tip:messages['Import a theme'],
 				id: "orion.importTheme", //$NON-NLS-1$
 				callback: themeImporter.showImportThemeDialog.bind(themeImporter)
-			};
+			});
 			this.commandService.addCommand(command);
 			this.commandService.registerCommandContribution('themeCommands', "orion.importTheme", 4); //$NON-NLS-1$ //$NON-NLS-2$
+
 			var editorPreferences = new mEditorPreferences.EditorPreferences (this.preferences);
 
 			this.themeSettings = new ThemeSettings({
+				id: "editorThemeSettings", //$NON-NLS-0$
+				title: messages.EditorThemes,
 				registry: this.registry,
 				preferences: editorPreferences,
 				themePreferences: themePreferences,
-				editorThemeWidget: editorThemeWidget,
+				themeWidget: themeWidget,
 				statusService: this.preferencesStatusService,
 				dialogService: this.preferenceDialogService,
 				commandService: this.commandService,
@@ -311,6 +374,54 @@ define([
 			}, themeSettingsNode);
 
 			this.themeSettings.show();
+		},
+		
+		showContainerThemeSettings: function(id){
+			this.selectCategory(id);
+			
+			lib.empty(this.table);
+			
+			this.updateToolbar(id);
+			
+			var themeSettingsNode = document.createElement('div');
+			this.table.appendChild(themeSettingsNode);
+			
+			var containerTheme = new containerThemeData.ThemeData();
+			var themePreferences = new mThemePreferences.ThemePreferences(this.preferences, containerTheme);
+			var previewWidget = new ContainerWidget();
+			var scopeList = ContainerScopeList;
+			var setup = ContainerSetup;
+			
+			var themeWidget = new ThemeBuilder({
+				commandService: this.commandService, 
+				preferences: themePreferences, 
+				themeData: containerTheme, 
+				toolbarId: 'containerThemeSettingsToolActionsArea',
+				scopeList: scopeList,
+				previewWidget: previewWidget,
+				setup: setup,
+				serviceRegistry: this.registry});
+
+			// Currently there is no support for exporting / importing container themes.
+			this.commandService.unregisterCommandContribution('themeCommands', "orion.importTheme");
+			this.commandService.unregisterCommandContribution('themeCommands', "orion.exportTheme");
+			
+			var editorPreferences = new mEditorPreferences.EditorPreferences (this.preferences);
+			this.containerThemeSettings = new ThemeSettings({
+				id: "containerThemeSettings",
+				title: messages.ContainerThemes,
+				registry: this.registry,
+				preferences: editorPreferences,
+				themePreferences: themePreferences,
+				themeWidget: themeWidget,
+				statusService: this.preferencesStatusService,
+				dialogService: this.preferenceDialogService,
+				commandService: this.commandService,
+				userClient: this.userClient
+			}, themeSettingsNode);
+			
+			this.containerThemeSettings.show();
+			
 		},
 		
 		showGlobalizationSettings: function(id){
@@ -325,7 +436,7 @@ define([
 
 			this.updateToolbar(id);
 			
-			var userNode = document.createElement('div'); //$NON-NLS-0$
+			var userNode = document.createElement('div');
 			this.table.appendChild(userNode);
 
 			this.globalizationWidget = new GlobalizationSettings({
@@ -353,7 +464,7 @@ define([
 
 			this.updateToolbar(id);
 			
-			var userNode = document.createElement('div'); //$NON-NLS-0$
+			var userNode = document.createElement('div');
 			this.table.appendChild(userNode);
 			
 			var generalPreferences = new mGeneralPreferences.GeneralPreferences (this.preferences);
@@ -467,6 +578,10 @@ define([
 					params: params
 				});
 			}
+			
+			if (this.versionString){
+				this.statusService.setMessage(this.versionString);
+			}
 		},
 
 		showByCategory: function(id) {
@@ -487,9 +602,6 @@ define([
 
 		addCategory: function(category) {
 			category['class'] = (category['class'] || '') + ' navbar-item'; //$NON-NLS-1$ //$NON-NLS-0$
-			category.role = "tab"; //$NON-NLS-1$
-			category.tabindex = -1;
-			category["aria-selected"] = "false"; //$NON-NLS-1$
 			category.onclick = category.show;
 			superPrototype.addCategory.apply(this, arguments);
 		},

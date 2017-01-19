@@ -57,6 +57,7 @@ define([
 		this._editorInputManager = options.editorInputManager;
 		
 		this._initialize();
+		this._setLaunchConfigurationsLabel(null);
 		this._disableAllControls(); // start with controls disabled until a launch configuration is selected
 	}
 	
@@ -76,12 +77,17 @@ define([
 				this._boundStopButtonListener = this._runBarButtonListener.bind(this, "orion.launchConfiguration.stopApp"); //$NON-NLS-0$
 				this._stopButton.addEventListener("click", this._boundStopButtonListener); //$NON-NLS-0$
 				
-				// set button tooltips
 				var playCommand = this._commandRegistry.findCommand("orion.launchConfiguration.deploy"); //$NON-NLS-0$
+				if (playCommand.name) {
+					this._setNodeName(this._playButton, playCommand.name);
+				}
 				if (playCommand.tooltip) {
 					this._setNodeTooltip(this._playButton, playCommand.tooltip);
 				}
 				var stopCommand = this._commandRegistry.findCommand("orion.launchConfiguration.stopApp"); //$NON-NLS-0$
+				if (stopCommand.name) {
+					this._setNodeName(this._stopButton, stopCommand.name);
+				}
 				if (stopCommand.tooltip) {
 					this._setNodeTooltip(this._stopButton, stopCommand.tooltip);
 				}
@@ -100,11 +106,13 @@ define([
 
 				this._appLink = lib.$(".appLink", this._domNode); //$NON-NLS-0$
 				this._appLink.addEventListener("click", this._boundLinkClickListener); //$NON-NLS-0$
+				this._setNodeName(this._appLink, messages["openApp"]); //$NON-NLS-0$
 				this._setNodeTooltip(this._appLink, messages["openAppTooltip"]); //$NON-NLS-0$
 				this._disableLink(this._appLink);
 				
 				this._logsLink = lib.$(".logsLink", this._domNode); //$NON-NLS-0$
 				this._logsLink.addEventListener("click", this._boundLinkClickListener); //$NON-NLS-0$
+				this._setNodeName(this._logsLink, messages["openLogs"]); //$NON-NLS-0$
 				this._setNodeTooltip(this._logsLink, messages["openLogsTooltip"]); //$NON-NLS-0$
 				this._disableLink(this._logsLink);
 
@@ -703,14 +711,36 @@ define([
 		
 		_enableControl: function(domNode) {
 			domNode.classList.remove("disabled"); //$NON-NLS-0$
+			domNode.removeAttribute("disabled"); //$NON-NLS-0$
+			domNode.removeAttribute("aria-disabled"); //$NON-NLS-0$
 		},
 		
 		_disableControl: function(domNode) {
 			domNode.classList.add("disabled"); //$NON-NLS-0$
+			domNode.setAttribute("disabled", "true"); //$NON-NLS-0$ //$NON-NLS-1$
+			domNode.setAttribute("aria-disabled", "true"); //$NON-NLS-0$ //$NON-NLS-1$
 		},
 		
 		_isEnabled: function(domNode) {
 			return !domNode.classList.contains("disabled"); //$NON-NLS-0$
+		},
+		
+		_disableSwitch: function(wrapperNode){
+			this._disableControl(wrapperNode);
+			
+			var switchNode = lib.$("div.orionSwitch", wrapperNode); //$NON-NLS-0$
+			if (switchNode) {
+				switchNode.removeAttribute("tabindex"); //$NON-NLS-0$
+			}
+		},
+		
+		_enableSwitch: function(wrapperNode){
+			this._enableControl(wrapperNode);
+			
+			var switchNode = lib.$("div.orionSwitch", wrapperNode); //$NON-NLS-0$
+			if (switchNode) {
+				switchNode.setAttribute("tabindex", "0"); //$NON-NLS-0$ //$NON-NLS-1$
+			}
 		},
 		
 		_enableLink: function(linkNode, href) {
@@ -733,6 +763,10 @@ define([
 			var disabled = this._isLinkDisabled(domNode) ? ".disabled" : ""; //$NON-NLS-1$ //$NON-NLS-0$
 			
 			mMetrics.logEvent("ui", "invoke", METRICS_LABEL_PREFIX + "." + id +".clicked" + disabled, evnt.which); //$NON-NLS-3$ //$NON-NLS-2$ //$NON-NLS-1$ //$NON-NLS-0$
+		},
+		
+		_setNodeName: function(domNode, text) {
+			domNode.setAttribute("aria-label", text);  //$NON-NLS-0$
 		},
 		
 		_setNodeTooltip: function(domNode, text) {
@@ -797,7 +831,7 @@ define([
 				this._launchConfigurationsLabel.appendChild(this._appName);
 				this._launchConfigurationsLabel.appendChild(this._appInfoSpan);
 			} else {
-				this._setText(this._launchConfigurationsLabel, this._project ? messages["selectLaunchConfig"] : null); //$NON-NLS-0$
+				this._setText(this._launchConfigurationsLabel, messages["selectLaunchConfig"]); //$NON-NLS-0$
 			}
 		},
 		
